@@ -172,7 +172,7 @@ class PointnetSAModuleVotes(nn.Module):
             npoint: int = None,
             radius: float = None,
             nsample: int = None,
-            bn: bool = True,
+            bn: bool = True,  # batchnorm 是不是不要用比较好
             use_xyz: bool = True,
             pooling: str = 'max',
             sigma: float = None, # for RBF pooling

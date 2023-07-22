@@ -28,7 +28,7 @@ def decode_scores(net, end_points, num_heading_bin):
     heading_residuals_normalized = net_transposed[:,:,5+num_heading_bin*3:5+num_heading_bin*3*2]
     end_points['heading_scores'] = heading_scores                                             # (B,num_proposal,num_heading_bin*3)
     end_points['heading_residuals_normalized'] = heading_residuals_normalized                 # (B,num_proposal,num_heading_bin*3) (should be -1 to 1)
-    end_points['heading_residuals'] = heading_residuals_normalized * (np.pi/num_heading_bin)  # (B,num_proposal,num_heading_bin) (should be -7.5 to 7.5)
+    end_points['heading_residuals'] = heading_residuals_normalized * (np.pi/num_heading_bin)  # (B,num_proposal,num_heading_bin*3) (should be -7.5 to 7.5)
 
     return end_points
 
@@ -58,8 +58,8 @@ class ProposalModule(nn.Module):
         self.conv1 = torch.nn.Conv1d(128,128,1)
         self.conv2 = torch.nn.Conv1d(128,128,1)
         self.conv3 = torch.nn.Conv1d(128,2+3+num_heading_bin*3*2,1)
-        self.bn1 = torch.nn.BatchNorm1d(128)
-        self.bn2 = torch.nn.BatchNorm1d(128)
+        self.bn1 = torch.nn.BatchNorm1d(128)  #, track_running_stats=False)  # for little batch
+        self.bn2 = torch.nn.BatchNorm1d(128)  #, track_running_stats=False)  # for little batch
 
     def forward(self, xyz, features, end_points):
         """

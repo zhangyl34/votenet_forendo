@@ -76,7 +76,7 @@ def compute_objectness_loss(end_points):
 
     # 计算 label 和 mask
     vote_inds = end_points['aggregated_vote_inds'].long()                         # (B,num_proposal)
-    seed_inds = torch.gather(end_points['seed_inds'],1,vote_ind.long()).long()    # 全局索引
+    seed_inds = torch.gather(end_points['seed_inds'],1,vote_inds).long()    # 全局索引
     objectness_label = torch.gather(end_points['vote_label_mask'], 1, seed_inds)  # (8,num_proposal)
 
     # 计算 objectness loss

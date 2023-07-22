@@ -22,8 +22,8 @@ class DatasetConfig(object):
                 class*(2pi/N) + number = angle
         '''
         num_class = self.num_heading_bin
-        angle = angle%(2*np.pi)
-        assert(angle>=0 and angle<=2*np.pi)
+        angle = angle%(2*np.pi)  # 0 to 2pi
+        assert(angle>=0 and angle<=2*np.pi), "angle range error!"
         angle_per_class = 2*np.pi/float(num_class)
         shifted_angle = (angle+angle_per_class/2.0)%(2*np.pi)
         class_id = int(shifted_angle/angle_per_class)

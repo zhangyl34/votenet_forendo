@@ -23,8 +23,8 @@ class VotingModule(nn.Module):
         self.conv1 = torch.nn.Conv1d(self.in_dim, self.in_dim, 1)
         self.conv2 = torch.nn.Conv1d(self.in_dim, self.in_dim, 1)
         self.conv3 = torch.nn.Conv1d(self.in_dim, (3+self.out_dim), 1)
-        self.bn1 = torch.nn.BatchNorm1d(self.in_dim)
-        self.bn2 = torch.nn.BatchNorm1d(self.in_dim)
+        self.bn1 = torch.nn.BatchNorm1d(self.in_dim)  #, track_running_stats=False)  # for little batch
+        self.bn2 = torch.nn.BatchNorm1d(self.in_dim)  #, track_running_stats=False)  # for little batch
         
     def forward(self, seed_xyz, seed_features):
         """ Forward pass.
