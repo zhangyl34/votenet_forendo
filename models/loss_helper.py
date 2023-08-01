@@ -67,7 +67,7 @@ def compute_objectness_loss(end_points):
         objectness_mask: (batch_size, num_seed) Tensor with value 0 or 1
     """ 
     # 计算 aggregated_vote_xyz 的 loss
-    aggregated_vote_xyz = end_points['aggregated_vote_xyz']  # (B(8),num_proposal(32),3) 点云坐标
+    aggregated_vote_xyz = end_points['aggregated_vote_xyz']  # (B(8),num_proposal(32),3) proposal 的实际坐标
     gt_center = end_points['center_label'][:,:,0:3]          # (B,1,3) xyz
     B = gt_center.shape[0]            # B
     K = aggregated_vote_xyz.shape[1]  # num_proposal
@@ -75,9 +75,9 @@ def compute_objectness_loss(end_points):
     dist1, _, _, _ = nn_distance(aggregated_vote_xyz, gt_center)
 
     # 计算 label 和 mask
-    vote_inds = end_points['aggregated_vote_inds'].long()                         # (B,num_proposal)
+    vote_inds = end_points['aggregated_vote_inds'].long()                   # (B,num_proposal)
     seed_inds = torch.gather(end_points['seed_inds'],1,vote_inds).long()    # 全局索引
-    objectness_label = torch.gather(end_points['vote_label_mask'], 1, seed_inds)  # (8,num_proposal)
+    objectness_label = torch.gather(end_points['vote_label_mask'], 1, seed_inds)  # (B,num_proposal)
 
     # 计算 objectness loss
     # B, num_proposal, 2
@@ -100,23 +100,25 @@ def compute_box_loss(end_points, config):
         heading_reg_loss
     """
 
-    # compute center loss
-    pred_center = end_points['center']  # (B,num_proposal,3) xyz
-    batch_size = pred_center.shape[0]
-    num_proposal = pred_center.shape[1]
-    gt_center = end_points['center_label'][:,:,0:3]  # (B,1,3) xyz
-    # dist1: (B,num_proposal), dist2: (B,1)
-    dist1, _, dist2, _ = nn_distance(pred_center, gt_center)
+    # # compute center loss
+    # pred_center = end_points['center']  # (B,num_proposal,3) xyz
+    # batch_size = pred_center.shape[0]
+    # num_proposal = pred_center.shape[1]
+    # gt_center = end_points['center_label'][:,:,0:3]  # (B,1,3) xyz
+    # # dist1: (B,num_proposal), dist2: (B,1)
+    # dist1, _, dist2, _ = nn_distance(pred_center, gt_center)
     objectness_label = end_points['objectness_label'].float()  # (8,num_proposal)
-    # 离 center 近的 proposal 的预测必须要准
-    centroid_reg_loss1 = \
-        torch.sum(dist1*objectness_label)/(torch.sum(objectness_label)+1e-6)
-    # 每个物体都必须有预测
-    centroid_reg_loss2 = torch.sum(dist2)
-    center_loss = centroid_reg_loss1 + centroid_reg_loss2
+    batch_size = objectness_label.shape[0]
+    num_proposal = objectness_label.shape[1]
+    # # 离 center 近的 proposal 的预测必须要准
+    # centroid_reg_loss1 = \
+    #     torch.sum(dist1*objectness_label)/(torch.sum(objectness_label)+1e-6)
+    # # 每个物体都必须有预测
+    # centroid_reg_loss2 = torch.sum(dist2)
+    center_loss = 0 #centroid_reg_loss1 + centroid_reg_loss2
 
     # compute heading class loss
-    num_heading_bin = config.num_heading_bin  # 24
+    num_heading_bin = config.num_heading_bin  # 12
     # B, num_proposal
     heading_class_label0 = end_points['heading_class_label'][:,0].view(batch_size,1).repeat(1,num_proposal)
     heading_class_label1 = end_points['heading_class_label'][:,1].view(batch_size,1).repeat(1,num_proposal)
@@ -136,7 +138,7 @@ def compute_box_loss(end_points, config):
     heading_residual_label0 = end_points['heading_residual_label'][:,0].view(batch_size,1).repeat(1,num_proposal)
     heading_residual_label1 = end_points['heading_residual_label'][:,1].view(batch_size,1).repeat(1,num_proposal)
     heading_residual_label2 = end_points['heading_residual_label'][:,2].view(batch_size,1).repeat(1,num_proposal)
-    # 将 -7.5~7.5*np.pi/180 转换到 -1~1
+    # 将 -15~15*np.pi/180 转换到 -1~1
     heading_residual_normalized_label0 = heading_residual_label0 / (np.pi/num_heading_bin)
     heading_residual_normalized_label1 = heading_residual_label1 / (np.pi/num_heading_bin)
     heading_residual_normalized_label2 = heading_residual_label2 / (np.pi/num_heading_bin)
@@ -177,16 +179,16 @@ def get_loss(end_points, config):
         end_points: dict
     """
 
-    # Vote loss
-    vote_loss = compute_vote_loss(end_points)
-    end_points['vote_loss'] = vote_loss
+    # # Vote loss
+    # vote_loss = compute_vote_loss(end_points)
+    # end_points['vote_loss'] = vote_loss
 
     # Obj loss
     objectness_loss, objectness_label = compute_objectness_loss(end_points)
     end_points['objectness_loss'] = objectness_loss
     end_points['objectness_label'] = objectness_label
     # end_points['objectness_mask'] = objectness_mask
-    total_num_proposal = objectness_label.shape[0]*objectness_label.shape[1]  # 8*32
+    # total_num_proposal = objectness_label.shape[0]*objectness_label.shape[1]  # 8*32
     # end_points['pos_ratio'] = \
     #     torch.sum(objectness_label.float().cuda())/float(total_num_proposal)
     # end_points['neg_ratio'] = \
@@ -195,14 +197,14 @@ def get_loss(end_points, config):
     # Box loss
     center_loss, heading_cls_loss, heading_reg_loss = \
         compute_box_loss(end_points, config)
-    end_points['center_loss'] = center_loss
+    # end_points['center_loss'] = center_loss
     end_points['heading_cls_loss'] = heading_cls_loss
     end_points['heading_reg_loss'] = heading_reg_loss
-    box_loss = center_loss + 0.1*heading_cls_loss + heading_reg_loss
+    box_loss = 0.1*heading_cls_loss + heading_reg_loss  # center_loss + 0.1*heading_cls_loss + heading_reg_loss
     end_points['box_loss'] = box_loss
 
     # Final loss function
-    loss = vote_loss + 0.5*objectness_loss + box_loss
+    loss = 0.5*objectness_loss + box_loss # vote_loss + 0.5*objectness_loss + box_loss
     loss *= 10
     end_points['loss'] = loss
 

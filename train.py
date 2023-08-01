@@ -24,15 +24,14 @@ sys.path.append(os.path.join(ROOT_DIR, 'pointnet2'))
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 from pytorch_utils import BNMomentumScheduler
 from tf_visualizer import Visualizer as TfVisualizer
-from ap_helper import APCalculator, parse_predictions, parse_groundtruths
+from ap_helper import parse_predictions, parse_groundtruths
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint_path', default=None, help='Model checkpoint path [default: None]')
 parser.add_argument('--log_dir', default='log', help='Dump dir to save model checkpoint [default: log]')
 parser.add_argument('--num_target', type=int, default=32, help='Proposal number [default: 256]')  # attention!
 parser.add_argument('--cluster_sampling', default='random', help='Sampling strategy for vote clusters: vote_fps, seed_fps, random')
-parser.add_argument('--ap_iou_thresh', type=float, default=0.25, help='AP IoU threshold [default: 0.25]')
-parser.add_argument('--max_epoch', type=int, default=180, help='Epoch to run [default: 180]')
+parser.add_argument('--max_epoch', type=int, default=190, help='Epoch to run [default: 180]')
 parser.add_argument('--batch_size', type=int, default=8, help='Batch Size during training [default: 8]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--weight_decay', type=float, default=0, help='Optimization L2 weight decay [default: 0]')
@@ -40,7 +39,6 @@ parser.add_argument('--bn_decay_step', type=int, default=20, help='Period of BN 
 parser.add_argument('--bn_decay_rate', type=float, default=0.5, help='Decay rate for BN decay [default: 0.5]')
 parser.add_argument('--lr_decay_steps', default='80,120,160', help='When to decay the learning rate (in epochs) [default: 80,120,160]')
 parser.add_argument('--lr_decay_rates', default='0.1,0.1,0.1', help='Decay rates for lr decay [default: 0.1,0.1,0.1]')
-parser.add_argument('--no_depth', action='store_false', help='Do not use height signal in input.')
 parser.add_argument('--overwrite', action='store_true', help='Overwrite existing log and dump folders.')
 parser.add_argument('--dump_results', action='store_true', help='Dump results.')
 FLAGS = parser.parse_args()
@@ -93,12 +91,9 @@ from synthetic_dataset import SyntheticDataset
 from synthetic_dataset_new import SyntheticDatasetNew
 from data_config import DatasetConfig
 DATASET_CONFIG = DatasetConfig()
-TRAIN_DATASET = SyntheticDataset('train',
-    augment=False, use_height=(not FLAGS.no_depth))
-TEST_DATASET = SyntheticDataset('val',
-    augment=False, use_height=(not FLAGS.no_depth))
-TEST_DATASET_NEW = SyntheticDatasetNew('demo',
-    augment=False, use_height=(not FLAGS.no_depth))
+TRAIN_DATASET = SyntheticDataset('train', augment=True)
+TEST_DATASET = SyntheticDataset('val', augment=False)
+TEST_DATASET_NEW = SyntheticDatasetNew('demo', augment=False)
 
 print("dataset size:", len(TRAIN_DATASET), len(TEST_DATASET))  # 数据集大小
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, batch_size=BATCH_SIZE,
@@ -112,7 +107,7 @@ print("iterations per epoch:", len(TRAIN_DATALOADER), len(TEST_DATALOADER),  len
 # Init the model and optimzier
 MODEL = importlib.import_module('votenet') # import network module
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-num_input_channel = int(not FLAGS.no_depth)
+num_input_channel = 0
 
 Detector = MODEL.VoteNet
 
@@ -214,7 +209,6 @@ def train_one_epoch():
 
 # evaluate old version
 # def evaluate_one_epoch():
-#     # ap_calculator = APCalculator(ap_iou_thresh=FLAGS.ap_iou_thresh)
 #     stat_dict = {}  # collect statistics
 #     # net.train()     # set model to training mode
 #     net.eval()      # set model to eval mode (for bn and dp)
@@ -268,7 +262,6 @@ def train_one_epoch():
 
 # evaluate new version
 def evaluate_one_epoch():
-    # ap_calculator = APCalculator(ap_iou_thresh=FLAGS.ap_iou_thresh)
     stat_dict = {}  # collect statistics
     # net.train()     # set model to training mode
     net.eval()      # set model to eval mode (for bn and dp)
@@ -300,7 +293,7 @@ def evaluate_one_epoch():
             from_frame="marker_5",
             to_frame="world",
         )
-        pose_gt = T_qua2rota*(Tm_5.inverse())
+        pose_gt = T_qua2rota*(Tm_4*Tm_5).inverse()
 
         # Forward pass
         inputs = {'point_clouds': batch_data_label['point_clouds']}

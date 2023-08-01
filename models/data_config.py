@@ -10,7 +10,7 @@ sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 
 class DatasetConfig(object):
     def __init__(self):
-        self.num_heading_bin = 24     # 每个 bin 15 度
+        self.num_heading_bin = 12     # 每个 bin 30 度
     
     def angle2class(self, angle):
         ''' Convert continuous angle to discrete class
@@ -30,13 +30,13 @@ class DatasetConfig(object):
         residual_angle = shifted_angle - (class_id*angle_per_class+angle_per_class/2)
         return class_id, residual_angle
     
-    def class2angle(self, pred_cls, residual, to_label_format=True):
+    def class2angle(self, pred_cls, residual):
         ''' Inverse function to angle2class '''
         num_class = self.num_heading_bin
         angle_per_class = 2*np.pi/float(num_class)
         angle_center = pred_cls * angle_per_class
         angle = angle_center + residual
-        if to_label_format and angle>np.pi:
+        if angle>np.pi:
             angle = angle - 2*np.pi
         return angle
 

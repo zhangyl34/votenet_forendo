@@ -45,8 +45,8 @@ class ProposalModule(nn.Module):
         # Vote clustering
         self.vote_aggregation = PointnetSAModuleVotes( 
                 npoint=self.num_proposal,
-                radius=4,
-                nsample=16,
+                radius=12,
+                nsample=32,
                 mlp=[self.seed_feat_dim, 128, 128, 128],
                 use_xyz=True,
                 normalize_xyz=True
@@ -87,7 +87,7 @@ class ProposalModule(nn.Module):
         else:
             log_string('Unknown sampling strategy: %s. Exiting!'%(self.sampling))
             exit()
-        end_points['aggregated_vote_xyz'] = xyz           # (batch_size,num_proposal,3)
+        end_points['aggregated_vote_xyz'] = xyz           # (batch_size,num_proposal,3) proposal 的实际坐标
         end_points['aggregated_vote_inds'] = sample_inds  # (batch_size,num_proposal)
 
         # --------- PROPOSAL GENERATION ---------
@@ -98,12 +98,12 @@ class ProposalModule(nn.Module):
         end_points = decode_scores(net, end_points, self.num_heading_bin)
         return end_points
 
-if __name__=='__main__':
-    sys.path.append(os.path.join(ROOT_DIR, 'sunrgbd'))
-    from sunrgbd_detection_dataset import SunrgbdDetectionVotesDataset, DC
-    net = ProposalModule(DC.num_heading_bin,
-        128, 'seed_fps').cuda()
-    end_points = {'seed_xyz': torch.rand(8,1024,3).cuda()}
-    out = net(torch.rand(8,1024,3).cuda(), torch.rand(8,256,1024).cuda(), end_points)
-    for key in out:
-        print(key, out[key].shape)
+# if __name__=='__main__':
+#     sys.path.append(os.path.join(ROOT_DIR, 'sunrgbd'))
+#     from sunrgbd_detection_dataset import SunrgbdDetectionVotesDataset, DC
+#     net = ProposalModule(DC.num_heading_bin,
+#         128, 'seed_fps').cuda()
+#     end_points = {'seed_xyz': torch.rand(8,1024,3).cuda()}
+#     out = net(torch.rand(8,1024,3).cuda(), torch.rand(8,256,1024).cuda(), end_points)
+#     for key in out:
+#         print(key, out[key].shape)

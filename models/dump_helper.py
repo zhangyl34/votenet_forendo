@@ -80,24 +80,5 @@ def dump_results(end_points, dump_dir, config):
                 pc_util.write_oriented_bbox(obbs[pred_mask[i,:]==1,:], os.path.join(dump_dir, '%06d_pred_nms_bbox.ply'%(idx_beg+i)))
                 pc_util.write_oriented_bbox(obbs, os.path.join(dump_dir, '%06d_pred_bbox.ply'%(idx_beg+i)))
 
-    # # dump bbox details
-    # if 'batch_pred_map_cls' in end_points:
-    #     for ii in range(batch_size):
-    #         fout = open(os.path.join(dump_dir, '%06d_pred_map_cls.txt'%(ii)), 'w')
-    #         for t in end_points['batch_pred_map_cls'][ii]:
-    #             # 储存 8 个角点
-    #             fout.write([str(x) for x in list(t[0].flatten())])
-    #             # 储存概率
-    #             fout.write(' '+str(t[1]))
-    #             fout.write('\n')
-    #         fout.close()
-    # if 'batch_gt_map_cls' in end_points:
-    #     for ii in range(batch_size):
-    #         fout = open(os.path.join(dump_dir, '%06d_gt_map_cls.txt'%(ii)), 'w')
-    #         for t in end_points['batch_gt_map_cls'][ii]:
-    #             # 储存 8 个角点
-    #             fout.write([str(x) for x in list(t[0].flatten())])
-    #             fout.write('\n')
-    #         fout.close()
 
 

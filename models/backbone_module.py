@@ -32,7 +32,7 @@ class Pointnet2Backbone(nn.Module):
         self.sa1 = PointnetSAModuleVotes(
                 npoint=512,
                 radius=2,
-                nsample=32,
+                nsample=16,
                 mlp=[input_feature_dim, 64, 64, 128],
                 use_xyz=True,
                 normalize_xyz=True
@@ -41,7 +41,7 @@ class Pointnet2Backbone(nn.Module):
         self.sa2 = PointnetSAModuleVotes(
                 npoint=256,
                 radius=4,
-                nsample=32,
+                nsample=16,
                 mlp=[128, 128, 128, 256],
                 use_xyz=True,
                 normalize_xyz=True
@@ -137,10 +137,10 @@ class Pointnet2Backbone(nn.Module):
         return end_points
 
 
-if __name__=='__main__':
-    backbone_net = Pointnet2Backbone(input_feature_dim=3).cuda()
-    print(backbone_net)
-    backbone_net.eval()
-    out = backbone_net(torch.rand(16,20000,6).cuda())
-    for key in sorted(out.keys()):
-        print(key, '\t', out[key].shape)
+# if __name__=='__main__':
+#     backbone_net = Pointnet2Backbone(input_feature_dim=3).cuda()
+#     print(backbone_net)
+#     backbone_net.eval()
+#     out = backbone_net(torch.rand(16,20000,6).cuda())
+#     for key in sorted(out.keys()):
+#         print(key, '\t', out[key].shape)

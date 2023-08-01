@@ -22,7 +22,7 @@ from data_config import DatasetConfig
 DC = DatasetConfig()  # dataset specific config
 
 class SyntheticDatasetNew(Dataset):
-    def __init__(self, split_set='demo', use_height=False, augment=False):
+    def __init__(self, split_set='demo', augment=False):
 
         self.data_path = os.path.join(ROOT_DIR, 'data/data_%s/ply'%(split_set))
         
@@ -31,7 +31,6 @@ class SyntheticDatasetNew(Dataset):
             for x in os.listdir(self.data_path)])))
 
         self.augment = augment        # False
-        self.use_height = use_height  # False
     
     def __len__(self):
         return len(self.scan_names)
@@ -52,7 +51,7 @@ class SyntheticDatasetNew(Dataset):
         # N,3 (x,y,z)
         point_cloud = read_ply(os.path.join(self.data_path, scan_name+'.ply'))
 
-        pcd_num = 4000
+        pcd_num = 2000
         if point_cloud.shape[0] >= pcd_num:
             choice = np.random.choice(point_cloud.shape[0], pcd_num, replace=False)
             point_cloud = point_cloud[choice, :]
@@ -63,10 +62,6 @@ class SyntheticDatasetNew(Dataset):
 
         # pc coordinate (x right,y forward,z upward)
         point_cloud = point_cloud[:,0:3]
-        # if self.use_height:
-        #     floor_height = np.percentile(point_cloud[:,2],0.99)
-        #     height = point_cloud[:,2] - floor_height
-        #     point_cloud = np.concatenate([point_cloud, np.expand_dims(height, 1)],1)  # (N,4)
 
         angle_classes = np.zeros((3))
         angle_residuals = np.zeros((3))

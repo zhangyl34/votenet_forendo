@@ -7,7 +7,6 @@ import torch
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-from eval_det import eval_det_multiprocessing, get_iou_obb
 from my_util import nms_faster, softmax
 
 def parse_predictions(end_points, config_dict):
@@ -59,7 +58,7 @@ def parse_predictions(end_points, config_dict):
             
             pred_pose[i,j] = np.hstack([pred_center[i,j,:],heading_angle0,heading_angle1,heading_angle2])
 
-    print(pred_pose)
+    # print(pred_pose)
     # (B,num_proposal,2)
     obj_logits = end_points['objectness_scores'].detach().cpu().numpy()
     # (B,num_proposal)
@@ -130,54 +129,54 @@ def parse_groundtruths(end_points, config_dict):
 
     return batch_gt_map_cls
 
-class APCalculator(object):
-    ''' Calculating Average Precision '''
-    def __init__(self, ap_iou_thresh=0.25):
-        """
-        Args:
-            ap_iou_thresh: float between 0 and 1.0
-                IoU threshold to judge whether a prediction is positive.
-            class2type_map: [optional] dict {class_int:class_name}
-        """
-        self.ap_iou_thresh = ap_iou_thresh
-        self.reset()
+# class APCalculator(object):
+#     ''' Calculating Average Precision '''
+#     def __init__(self, ap_iou_thresh=0.25):
+#         """
+#         Args:
+#             ap_iou_thresh: float between 0 and 1.0
+#                 IoU threshold to judge whether a prediction is positive.
+#             class2type_map: [optional] dict {class_int:class_name}
+#         """
+#         self.ap_iou_thresh = ap_iou_thresh
+#         self.reset()
         
-    def step(self, batch_pred_map_cls, batch_gt_map_cls):
-        """ Accumulate one batch of prediction and groundtruth.
+#     def step(self, batch_pred_map_cls, batch_gt_map_cls):
+#         """ Accumulate one batch of prediction and groundtruth.
         
-        Args:
-            batch_pred_map_cls: a list of lists [[(pred_cls, pred_box_params, score),...],...]
-            batch_gt_map_cls: a list of lists [[(gt_cls, gt_box_params),...],...]
-                should have the same length with batch_pred_map_cls (batch_size)
-        """
+#         Args:
+#             batch_pred_map_cls: a list of lists [[(pred_cls, pred_box_params, score),...],...]
+#             batch_gt_map_cls: a list of lists [[(gt_cls, gt_box_params),...],...]
+#                 should have the same length with batch_pred_map_cls (batch_size)
+#         """
         
-        bsize = len(batch_pred_map_cls)  # B
-        assert(bsize == len(batch_gt_map_cls)), "batch_gt_map_cls size error!"
-        for i in range(bsize):
-            self.gt_map_cls[self.scan_cnt] = batch_gt_map_cls[i]      # x,y,z,euler
-            self.pred_map_cls[self.scan_cnt] = batch_pred_map_cls[i]  # prob,x,y,z,euler
-            self.scan_cnt += 1
+#         bsize = len(batch_pred_map_cls)  # B
+#         assert(bsize == len(batch_gt_map_cls)), "batch_gt_map_cls size error!"
+#         for i in range(bsize):
+#             self.gt_map_cls[self.scan_cnt] = batch_gt_map_cls[i]      # x,y,z,euler
+#             self.pred_map_cls[self.scan_cnt] = batch_pred_map_cls[i]  # prob,x,y,z,euler
+#             self.scan_cnt += 1
     
-    def compute_metrics(self):
-        """ compute Average Precision.
-        """
-        rec, _, ap = eval_det_multiprocessing(self.pred_map_cls, self.gt_map_cls, ovthresh=self.ap_iou_thresh, get_iou_func=get_iou_obb)
+#     def compute_metrics(self):
+#         """ compute Average Precision.
+#         """
+#         rec, _, ap = eval_det_multiprocessing(self.pred_map_cls, self.gt_map_cls, ovthresh=self.ap_iou_thresh, get_iou_func=get_iou_obb)
         
-        ret_dict = {} 
-        ret_dict['Average Precision'] = ap
+#         ret_dict = {} 
+#         ret_dict['Average Precision'] = ap
 
-        rec_list = []
-        try:
-            ret_dict['Recall'] = rec[-1]
-            rec_list.append(rec[-1])
-        except:
-            ret_dict['Recall'] = 0
-            rec_list.append(0)
+#         rec_list = []
+#         try:
+#             ret_dict['Recall'] = rec[-1]
+#             rec_list.append(rec[-1])
+#         except:
+#             ret_dict['Recall'] = 0
+#             rec_list.append(0)
 
-        ret_dict['AR'] = np.mean(rec_list)
-        return ret_dict
+#         ret_dict['AR'] = np.mean(rec_list)
+#         return ret_dict
 
-    def reset(self):
-        self.gt_map_cls = {}    # {scan_id(B*iterations): [(bbox)]}
-        self.pred_map_cls = {}  # {scan_id(B*iterations): [(bbox,score)]}
-        self.scan_cnt = 0
+#     def reset(self):
+#         self.gt_map_cls = {}    # {scan_id(B*iterations): [(bbox)]}
+#         self.pred_map_cls = {}  # {scan_id(B*iterations): [(bbox,score)]}
+#         self.scan_cnt = 0

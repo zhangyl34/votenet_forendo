@@ -72,91 +72,6 @@ def convex_hull_intersection(p1, p2):
     else:
         return None, 0.0  
 
-def box3d_vol(corners):
-    ''' corners: (8,3) no assumption on axis direction '''
-    a = np.sqrt(np.sum((corners[0,:] - corners[1,:])**2))
-    b = np.sqrt(np.sum((corners[1,:] - corners[2,:])**2))
-    c = np.sqrt(np.sum((corners[0,:] - corners[4,:])**2))
-    return a*b*c
-
-def box3d_iou(corners1, corners2):
-    ''' Compute 3D bounding box IoU.
-
-    Input:
-        corners1: numpy array (8,3), assume up direction is negative Y
-        corners2: numpy array (8,3), assume up direction is negative Y
-    Output:
-        iou: 3D bounding box IoU
-        iou_2d: bird's eye view 2D bounding box IoU
-
-    todo (rqi): add more description on corner points' orders.
-    '''
-    # corner points are in counter clockwise order
-    rect1 = [(corners1[i,0], corners1[i,2]) for i in range(3,-1,-1)]
-    rect2 = [(corners2[i,0], corners2[i,2]) for i in range(3,-1,-1)] 
-    area1 = poly_area(np.array(rect1)[:,0], np.array(rect1)[:,1])
-    area2 = poly_area(np.array(rect2)[:,0], np.array(rect2)[:,1])
-    inter, inter_area = convex_hull_intersection(rect1, rect2)
-    iou_2d = inter_area/(area1+area2-inter_area)
-    ymax = min(corners1[0,1], corners2[0,1])
-    ymin = max(corners1[4,1], corners2[4,1])
-    inter_vol = inter_area * max(0.0, ymax-ymin)
-    vol1 = box3d_vol(corners1)
-    vol2 = box3d_vol(corners2)
-    iou = inter_vol / (vol1 + vol2 - inter_vol)
-    return iou, iou_2d
-
-
-def get_iou(bb1, bb2):
-    """
-    Calculate the Intersection over Union (IoU) of two 2D bounding boxes.
-
-    Parameters
-    ----------
-    bb1 : dict
-        Keys: {'x1', 'x2', 'y1', 'y2'}
-        The (x1, y1) position is at the top left corner,
-        the (x2, y2) position is at the bottom right corner
-    bb2 : dict
-        Keys: {'x1', 'x2', 'y1', 'y2'}
-        The (x, y) position is at the top left corner,
-        the (x2, y2) position is at the bottom right corner
-
-    Returns
-    -------
-    float
-        in [0, 1]
-    """
-    assert bb1['x1'] < bb1['x2']
-    assert bb1['y1'] < bb1['y2']
-    assert bb2['x1'] < bb2['x2']
-    assert bb2['y1'] < bb2['y2']
-
-    # determine the coordinates of the intersection rectangle
-    x_left = max(bb1['x1'], bb2['x1'])
-    y_top = max(bb1['y1'], bb2['y1'])
-    x_right = min(bb1['x2'], bb2['x2'])
-    y_bottom = min(bb1['y2'], bb2['y2'])
-
-    if x_right < x_left or y_bottom < y_top:
-        return 0.0
-
-    # The intersection of two axis-aligned bounding boxes is always an
-    # axis-aligned bounding box
-    intersection_area = (x_right - x_left) * (y_bottom - y_top)
-
-    # compute the area of both AABBs
-    bb1_area = (bb1['x2'] - bb1['x1']) * (bb1['y2'] - bb1['y1'])
-    bb2_area = (bb2['x2'] - bb2['x1']) * (bb2['y2'] - bb2['y1'])
-
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-    assert iou >= 0.0
-    assert iou <= 1.0
-    return iou
-
 def roty(t):
     """Rotation about the y-axis."""
     c = np.cos(t)
@@ -165,20 +80,4 @@ def roty(t):
                     [0,  1,  0],
                     [-s, 0,  c]])
 
-# def get_3d_box(box_size, heading_angle, center):
-#     ''' box_size is array(l,w,h), heading_angle is radius clockwise from pos x axis, center is xyz of box center
-#         output (8,3) array for 3D box cornders
-#         Similar to utils/compute_orientation_3d
-#     '''
-#     R = roty(heading_angle)
-#     l,w,h = box_size
-#     x_corners = [l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2]
-#     y_corners = [h/2,h/2,h/2,h/2,-h/2,-h/2,-h/2,-h/2]
-#     z_corners = [w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2]
-#     corners_3d = np.dot(R, np.vstack([x_corners,y_corners,z_corners]))
-#     corners_3d[0,:] = corners_3d[0,:] + center[0]
-#     corners_3d[1,:] = corners_3d[1,:] + center[1]
-#     corners_3d[2,:] = corners_3d[2,:] + center[2]
-#     corners_3d = np.transpose(corners_3d)
-#     return corners_3d
 

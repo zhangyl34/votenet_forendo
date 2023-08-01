@@ -41,7 +41,7 @@ class VoteNet(nn.Module):
         input_feature_dim=0, num_proposal=128, sampling='vote_fps'):
         super().__init__()
 
-        self.num_heading_bin = num_heading_bin      # 24
+        self.num_heading_bin = num_heading_bin      # 12
         self.input_feature_dim = input_feature_dim  # 0
         self.num_proposal = num_proposal            # 32
         self.sampling=sampling                      # random
@@ -74,7 +74,7 @@ class VoteNet(nn.Module):
         batch_size = inputs['point_clouds'].shape[0]
 
         end_points = self.backbone_net(inputs['point_clouds'], end_points)
-                
+
         # --------- HOUGH VOTING ---------
         xyz = end_points['fp2_xyz']
         features = end_points['fp2_features']

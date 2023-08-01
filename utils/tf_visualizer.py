@@ -29,16 +29,3 @@ class Visualizer():
         for label, val in scalars.items():
             self.logger.scalar_summary(label, val, step)
 
-    # # scatter plots
-    # def plot_current_points(self, points, disp_offset=10):
-    #     pass
-
-    # # scalars: same format as |scalars| of plot_current_scalars
-    # def print_current_scalars(self, epoch, i, scalars):
-    #     message = '(epoch: %d, iters: %d) ' % (epoch, i)
-    #     for k, v in scalars.items():
-    #         message += '%s: %.3f ' % (k, v)
-
-    #     print(message)
-    #     with open(self.log_name, "a") as log_file:
-    #         log_file.write('%s\n' % message)

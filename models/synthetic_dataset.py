@@ -17,11 +17,12 @@ sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import pc_util
 from data_config import DatasetConfig
+from scipy.spatial.transform import Rotation as R
 
 DC = DatasetConfig()  # dataset specific config
 
 class SyntheticDataset(Dataset):
-    def __init__(self, split_set='train', use_height=False, augment=False):
+    def __init__(self, split_set='train', augment=False):
 
         self.data_path = os.path.join(ROOT_DIR, 'data/data_%s'%(split_set))
         
@@ -29,9 +30,8 @@ class SyntheticDataset(Dataset):
         self.scan_names = sorted(list(set([os.path.basename(x)[0:6] \
             for x in os.listdir(self.data_path)])))
 
-        self.augment = augment        # False
-        self.use_height = use_height  # False
-    
+        self.augment = augment  # False
+        
     def __len__(self):
         return len(self.scan_names)
 
@@ -55,44 +55,67 @@ class SyntheticDataset(Dataset):
         # N,4 (bool,dx,dy,dz)
         point_votes = np.load(os.path.join(self.data_path, scan_name)+'_votes.npz')['point_votes']
 
-        assert(point_cloud.shape[0] == 4000), "point cloud size error!"
+        # 随机采样 2k 个点
+        pcd_num = 2000
+        assert(point_cloud.shape[0] >= pcd_num), "point cloud size error!"
+        choice = np.random.choice(point_cloud.shape[0], pcd_num, replace=False)
+        point_cloud = point_cloud[choice, :]
+        point_votes = point_votes[choice, :]
 
         # pc coordinate (x right,y forward,z upward)
         point_cloud = point_cloud[:,0:3]
-        # if self.use_height:
-        #     floor_height = np.percentile(point_cloud[:,2],0.99)
-        #     height = point_cloud[:,2] - floor_height
-        #     point_cloud = np.concatenate([point_cloud, np.expand_dims(height, 1)],1)  # (N,4)
 
-        # # ------------------------------- DATA AUGMENTATION ------------------------------
-        # if self.augment:
-        #     if np.random.random() > 0.5:
-        #         # Flipping along the YZ plane
-        #         point_cloud[:,0] = -1 * point_cloud[:,0]
-        #         bboxes[:,0] = -1 * bboxes[:,0]
-        #         bboxes[:,3] = np.pi - bboxes[:,3]
-        #         point_votes[:,[1]] = -1 * point_votes[:,[1]]
+        # ------------------------------- DATA AUGMENTATION ------------------------------
+        if self.augment:
+            if np.random.random() > 0.5:
+                # Flipping along the YZ plane
+                point_cloud[:,0] = -1 * point_cloud[:,0]
+                bboxes[0,0] = -1 * bboxes[0,0]
 
-        #     # Rotation along Z-axis
-        #     rot_angle = (np.random.random()*np.pi/3) - np.pi/6 # -30 ~ +30 degree
-        #     rot_mat = pc_util.rotz(rot_angle)
+                R_bbox = R.from_euler('XYZ', bboxes[0][3:6]).as_matrix()
+                R_bbox[1,0] = -R_bbox[1,0]
+                R_bbox[2,0] = -R_bbox[2,0]
+                R_bbox[0,1] = -R_bbox[0,1]
+                R_bbox[0,2] = -R_bbox[0,2]
+                bboxes[0,3:6] = R.from_matrix(R_bbox).as_euler('XYZ')
 
-        #     point_votes_end = np.zeros_like(point_votes)
-        #     point_votes_end[:,1:4] = np.dot(point_cloud[:,0:3] + point_votes[:,1:4], np.transpose(rot_mat))
+                point_votes[:,1] = -1 * point_votes[:,1]
+            
+            if np.random.random() > 0.5:
+                # Flipping along the XZ plane
+                point_cloud[:,1] = -1 * point_cloud[:,1]
+                bboxes[0,1] = -1 * bboxes[0,1]
 
-        #     point_cloud[:,0:3] = np.dot(point_cloud[:,0:3], np.transpose(rot_mat))
-        #     bboxes[:,0:3] = np.dot(bboxes[:,0:3], np.transpose(rot_mat))
-        #     bboxes[:,3] -= rot_angle
-        #     point_votes[:,1:4] = point_votes_end[:,1:4] - point_cloud[:,0:3]
+                R_bbox = R.from_euler('XYZ', bboxes[0][3:6]).as_matrix()
+                R_bbox[0,0] = -R_bbox[0,0]
+                R_bbox[2,0] = -R_bbox[2,0]
+                R_bbox[1,1] = -R_bbox[1,1]
+                R_bbox[1,2] = -R_bbox[1,2]
+                bboxes[0,3:6] = R.from_matrix(R_bbox).as_euler('XYZ')
 
-        #     # Augment point cloud scale: 0.95x-1.05x
-        #     scale_ratio = np.random.random()*0.1+0.95
-        #     scale_ratio = np.expand_dims(np.tile(scale_ratio,3),0)
-        #     point_cloud[:,0:3] *= scale_ratio
-        #     bboxes[:,0:3] *= scale_ratio
-        #     point_votes[:,1:4] *= scale_ratio
-        #     if self.use_height:
-        #         point_cloud[:,-1] *= scale_ratio[0,0]
+                point_votes[:,2] = -1 * point_votes[:,2]
+
+            # Rotation along Z-axis
+            rot_angle = (np.random.random()*np.pi/3) - np.pi/6 # -30 ~ +30 degree
+            rot_mat = pc_util.rotz(rot_angle)
+
+            point_votes_end = np.zeros_like(point_votes)
+            point_votes_end[:,1:4] = np.dot(point_cloud[:,0:3] + point_votes[:,1:4], np.transpose(rot_mat))
+            point_cloud[:,0:3] = np.dot(point_cloud[:,0:3], np.transpose(rot_mat))
+            bboxes[0,0:3] = np.dot(bboxes[0,0:3], np.transpose(rot_mat))
+
+            R_bbox = R.from_euler('XYZ', bboxes[0][3:6]).as_matrix()
+            R_bbox = np.dot(rot_mat, R_bbox)
+            bboxes[0,3:6] = R.from_matrix(R_bbox).as_euler('XYZ')
+
+            point_votes[:,1:4] = point_votes_end[:,1:4] - point_cloud[:,0:3]
+
+            # Augment point cloud scale: 0.95x-1.05x
+            scale_ratio = np.random.random()*0.1+0.95
+            scale_ratio = np.expand_dims(np.tile(scale_ratio,3),0)
+            point_cloud[:,0:3] *= scale_ratio
+            bboxes[:,0:3] *= scale_ratio
+            point_votes[:,1:4] *= scale_ratio
 
         # ------------------------------- LABELS ------------------------------
         angle_classes = np.zeros((3))
@@ -100,8 +123,8 @@ class SyntheticDataset(Dataset):
         target_bboxes = np.zeros((1, 3))
 
         if np.shape(bboxes)[0] > 0:
-            bbox = bboxes[0]  # -pi to pi
-            bbox[3:6] = bbox[3:6]
+            bbox = bboxes[0]
+            bbox[3:6] = bbox[3:6]  # -pi to pi
             angle_class, angle_residual = DC.angle2class(bbox[3])
             angle_classes[0] = angle_class
             angle_residuals[0] = angle_residual
@@ -168,12 +191,12 @@ class SyntheticDataset(Dataset):
 #     pc_util.write_oriented_bbox(oriented_boxes, 'gt_obbs.ply')
 #     pc_util.write_ply(label[mask==1,:], 'gt_centroids.ply')
 
-if __name__=='__main__':
-    d = SyntheticDataset(use_height=True, augment=True)
-    sample = d[200]
-    print(sample['vote_label'].shape, sample['vote_label_mask'].shape)
-    pc_util.write_ply(sample['point_clouds'], 'pc.ply')
-    viz_votes(sample['point_clouds'], sample['vote_label'], sample['vote_label_mask'])
-    viz_obb(sample['point_clouds'], sample['center_label'], sample['box_label_mask'],
-        sample['heading_class_label'], sample['heading_residual_label'],
-        sample['size_class_label'], sample['size_residual_label'])
+# if __name__=='__main__':
+#     d = SyntheticDataset(use_height=True, augment=True)
+#     sample = d[200]
+#     print(sample['vote_label'].shape, sample['vote_label_mask'].shape)
+#     pc_util.write_ply(sample['point_clouds'], 'pc.ply')
+#     viz_votes(sample['point_clouds'], sample['vote_label'], sample['vote_label_mask'])
+#     viz_obb(sample['point_clouds'], sample['center_label'], sample['box_label_mask'],
+#         sample['heading_class_label'], sample['heading_residual_label'],
+#         sample['size_class_label'], sample['size_residual_label'])

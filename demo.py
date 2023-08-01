@@ -38,7 +38,11 @@ def preprocess_point_cloud(point_cloud):
     # height = point_cloud[:,2] - floor_height
     # point_cloud = np.concatenate([point_cloud, np.expand_dims(height, 1)],1)  # (N,4)
 
-    assert(512 < point_cloud.shape[0] < 12000), "point cloud size error!"
+    pcd_num = 2000
+    assert(pcd_num <= point_cloud.shape[0]), "point cloud size error!"
+    choice = np.random.choice(point_cloud.shape[0], pcd_num, replace=False)
+    point_cloud = point_cloud[choice, :]
+
     pc = np.expand_dims(point_cloud.astype(np.float32), 0)  # (1,num_points,3)
     return pc
 
@@ -52,7 +56,7 @@ if __name__=='__main__':
         for x in os.listdir(os.path.join(demo_dir, 'ply'))])))
     gt_data = np.loadtxt(demo_dir + '/end_pose_ref.log')
 
-    eval_config_dict = {'conf_thresh': 0.15, 'dataset_config': DC}
+    eval_config_dict = {'conf_thresh': 0.0005, 'dataset_config': DC}
 
     # Init the model and optimzier
     MODEL = importlib.import_module('votenet')
@@ -70,7 +74,7 @@ if __name__=='__main__':
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     print("Loaded checkpoint %s (epoch: %d)"%(checkpoint_path, epoch))
-    net.train()  # eval model will lead to bad predict, don't know why
+    net.eval()  # eval model will lead to bad predict, don't know why
 
     Tm_4 = RigidTransform(
         rotation=RigidTransform.z_axis_rotation((45)*np.pi/180),
@@ -85,19 +89,20 @@ if __name__=='__main__':
         to_frame="marker_4",
     )
 
-    error = np.zeros((len(scan_names),4))
+    error = np.zeros((len(scan_names),2))
     for i in range(len(scan_names)):
 
+        scan_name = scan_names[i]
+
         T_qua2rota = RigidTransform(
-            rotation=np.array([gt_data[i][3], gt_data[i][4], gt_data[i][5], gt_data[i][6]]),
-            translation=np.array([gt_data[i][0], gt_data[i][1], gt_data[i][2]]),
+            rotation=np.array([gt_data[int(scan_name)-1][3], gt_data[int(scan_name)-1][4], gt_data[int(scan_name)-1][5], gt_data[int(scan_name)-1][6]]),
+            translation=np.array([gt_data[int(scan_name)-1][0], gt_data[int(scan_name)-1][1], gt_data[int(scan_name)-1][2]]),
             from_frame="marker_5",
             to_frame="world",
         )
         pose_gt = T_qua2rota*(Tm_4*Tm_5).inverse()
 
         # Load and preprocess input point cloud
-        scan_name = scan_names[i]
         point_cloud = read_ply(demo_dir+'/ply/'+scan_name+'.ply')
         # point_cloud = np.load(demo_dir + '/000950_pc.npz')['pc']
         pc = preprocess_point_cloud(point_cloud)
@@ -122,7 +127,7 @@ if __name__=='__main__':
 
         # 计算误差
         position_error = np.sqrt(np.sum((pose_gt.translation-pred_map_cls[0][0][1][0:3])*(pose_gt.translation-pred_map_cls[0][0][1][0:3])))
-        R_predict = R.from_euler('xyz', pred_map_cls[0][0][1][3:6]).as_matrix()
+        R_predict = R.from_euler('XYZ', pred_map_cls[0][0][1][3:6]).as_matrix()
         R_gt = pose_gt.rotation
         z_predict = R_predict[:,2]
         z_gt = R_gt[:,2]
@@ -130,13 +135,17 @@ if __name__=='__main__':
         x_predict = R_predict[:,0]
         x_gt = R_gt[:,0]
         x_error = np.degrees(np.arccos(np.dot(x_predict, x_gt)))
+        print(R.from_euler('XYZ', pred_map_cls[0][0][1][3:6]).as_euler('xyz',degrees=True))
 
         
         if len(pred_map_cls[0]) > 0:
-            error[i][0] = abs(pose_gt.translation[0]-pred_map_cls[0][0][1][0])
-            error[i][1] = abs(pose_gt.translation[1]-pred_map_cls[0][0][1][1])
-            error[i][2] = abs(pose_gt.translation[2]-pred_map_cls[0][0][1][2])
-            error[i][3] = position_error
+            # error[i][0] = abs(pose_gt.translation[0]-pred_map_cls[0][0][1][0])
+            # error[i][1] = abs(pose_gt.translation[1]-pred_map_cls[0][0][1][1])
+            # error[i][2] = abs(pose_gt.translation[2]-pred_map_cls[0][0][1][2])
+            # error[i][3] = position_error
+
+            error[i][0] = z_error
+            error[i][1] = x_error
             log_string('position errror: %f'%(position_error))
             log_string('z_axis error: %f'%(z_error))
             log_string('x_axis error: %f'%(x_error))
