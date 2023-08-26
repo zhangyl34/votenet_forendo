@@ -77,7 +77,7 @@ if __name__=='__main__':
     net.eval()  # eval model will lead to bad predict, don't know why
 
     Tm_4 = RigidTransform(
-        rotation=RigidTransform.z_axis_rotation((45)*np.pi/180),
+        rotation=RigidTransform.z_axis_rotation((-150)*np.pi/180),  # dataset1 +45
         translation=np.array([0.0,0.0,0.0]),
         from_frame="marker_4",
         to_frame="base",

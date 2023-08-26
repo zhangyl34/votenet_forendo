@@ -123,8 +123,7 @@ class SyntheticDataset(Dataset):
         target_bboxes = np.zeros((1, 3))
 
         if np.shape(bboxes)[0] > 0:
-            bbox = bboxes[0]
-            bbox[3:6] = bbox[3:6]  # -pi to pi
+            bbox = bboxes[0]  # -pi to pi
             angle_class, angle_residual = DC.angle2class(bbox[3])
             angle_classes[0] = angle_class
             angle_residuals[0] = angle_residual
